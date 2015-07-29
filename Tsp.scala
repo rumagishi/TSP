@@ -125,11 +125,12 @@ object Tsp {
       }
 
       val better = for (i <- 0 until routes.length) yield (samplepoint !? routes(i)).asInstanceOf[List[Int]]
-      Thread.sleep(1000)
-      println("actors are executed.")
+      Thread.sleep(2000)
+      while(samplepoint.getState.toString == "Runnable") {println("waiting")}
       val answer = returnBestRoute(better.toList, distanceTable)
       println("解は " + answer)
       println("その距離は " + getRouteDistance(answer, distanceTable))
+      println(samplepoint.getState)
       sys.exit(0)
     }
   }
