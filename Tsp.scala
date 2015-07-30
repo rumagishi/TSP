@@ -1,12 +1,3 @@
-/*
- * 7/29
- *
- * 全てのactorの終了を待たずにmain関数で結果表示しているため，不整合が起きる．
- *
- *
- *
- *
- * */
 import scala.io.Source
 import math._
 import scala.util.Random
@@ -67,17 +58,20 @@ object Tsp {
     } else {
 
       //問題の初期設定
+      val seed = args(0).toInt
+      val genNum = args(1).toInt //探索開始地点数．これも実行時に指定できるようにする．
+      Random.setSeed(seed)
       //ここはdatファイルから読み込めるようにする
       //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (2,1), (2,2), (1,2), (0,2), (0,1) )
-      val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (0,2), (2,2), (1,2), (2,1), (0,1) )
+      //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (0,2), (2,2), (1,2), (2,1), (0,1) )
+      val citycordi:Array[(Int, Int)] = (for (i <- 0 until 100) yield (nextInt(100), nextInt(100))).toArray
       //都市間の距離をあらかじめ求めておく
       val distanceTable = getOverallDistance(citycordi)
+      //都市数
+      val numOfCity = citycordi.length
       //都市の巡回順序
-      val defaultRoute = (0 until citycordi.length).toList
+      val defaultRoute = (0 until numOfCity).toList
       //シード値を読み込む
-      val seed = args(0).toInt
-      Random.setSeed(seed)
-      val genNum = args(1).toInt //探索開始地点数．これも実行時に指定できるようにする．
 
       //ルートをgenNumの数だけシャッフル
       var routes = for(i <- 0 until genNum-1) yield shuffleRoute(defaultRoute)
