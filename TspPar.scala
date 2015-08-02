@@ -8,7 +8,6 @@ import scala.collection.parallel.immutable._
 
 object TspPar {
 
-
   //datファイル読み込み
   def tsuhakoMethod(file: String): Array[(Double, Double)] = {
     val source = Source.fromFile(file)
@@ -83,6 +82,7 @@ object TspPar {
       //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (2,1), (2,2), (1,2), (0,2), (0,1) )
       //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (0,2), (2,2), (1,2), (2,1), (0,1) )
       //val citycordi:Array[(Int, Int)] = (for (i <- 0 until 100) yield (nextInt(100), nextInt(100))).toArray
+      //datファイルから読み込む
       val citycordi:Array[(Double, Double)] = tsuhakoMethod(filename)
 
       //都市間の距離をあらかじめ求めておく
@@ -91,12 +91,10 @@ object TspPar {
       val numOfCity = citycordi.length
       //都市の巡回順序
       val defaultRoute = (0 until numOfCity).toList
-      //シード値を読み込む
 
       //ルートをgenNumの数だけシャッフル
       var routes = for(i <- 0 until genNum-1) yield shuffleRoute(defaultRoute)
       routes :+= defaultRoute
-      //println(routes)
 
       val findBest = actor {
         loop {
@@ -156,66 +154,4 @@ object TspPar {
     }
   }
 }
-
-/*各メソッドの挙動チェック - Start*/
-   //println(routes.toList)
-   //println(routes().map(x => twoOpt(x, distanceTable)))
-   ///*訪問順番のシャッフル*/
-   ///*ここで初期探索点を増やす．*/
-   //val newOrder = shuffleRoute(defaultRoute, seed)
-   ///*経路の距離をもとめる*/
-   //val routeDistance = getRouteDistance(defaultRoute, distanceTable)
-   ///*2-optの実行*/
-   //val candidates = twoOpt(defaultRoute)
-   //val div = 4
-   //val hop = candidates.length/div
-   //for(i <- 0 until div) {
-   //  println(candidates.slice(hop*i, hop*i+hop))
-   //}
-   //println(checkTwoOpt)
-   /*各メソッドの挙動チェック - End*/
-
-  /*都市の巡回する順番をかえる関数*/
- /*citycordiから各都市間の距離を算出する関数*/
-/*経路の道のりを求める関数*/
-   /*都市の巡る順番をバラバラにする(初期探索点)*/
-  /*2-optして近傍で最良の解を求める．*/
-
- /******流れ******/
- /*dataファイルを与える*/
-/*都市の巡る順番をバラバラにする(初期探索点)*/
-/*上の操作を何回か実行してクローンを作る*/
-
-/*局所探索*/
-/*while( これ以上2-optの余地がない )*/
-/*2-optする*/
-/*end while*/
-
-/*Join*/
-/*巡回経路の距離を求める*/
-/*ベストな経路を求める*/
-/******流れ終了******/
-
-/*参考ページ*/
-/*2-opt*/
-/*なんか一般的な2-optと違うみたい*/
-/*https://en.wikipedia.org/wiki/2-opt*/
-//def twoOpt(order: List[Int], seed: Int) = {
-//  Random.setSeed(seed)
-//  def generateIndexNumber(): (Int, Int) = {
-//    val n1 = nextInt(order.length)
-//    val n2 = nextInt(order.length)
-//    if(n2 < n1) {
-//      (n2, n1)
-//    } else if ( n1 < n2 ) {
-//      (n1, n2)
-//    } else {
-//      generateIndexNumber()
-//    }
-//  }
-//  generateIndexNumber()
-//  /*1.list.take(r)*/
-//  /*2.list.slice(r,t).reverse*/
-//  /*3.*/
-//}
 
