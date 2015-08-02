@@ -29,3 +29,9 @@ Suspended
 Suspended
         9.36 real        18.54 user         0.54 sys
 ```
+
+8/2 datファイルから読み込めるようになった．
+
+```
+val citycordi:Array[(Double, Double)] = tsuhakoMethod(filename)
+```
