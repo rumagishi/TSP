@@ -2,7 +2,6 @@ import scala.io.Source
 import math._
 import scala.util.Random
 import scala.util.Random._
-//import akka.actor._
 import scala.actors.Actor
 import scala.actors.Actor._
 import scala.collection.parallel.immutable._
@@ -69,21 +68,18 @@ object TspCol {
 
   def main(args: Array[String]): Unit = {
     if(args.length != 3) {
-      println("引数として，")
-      println(">>> scala Tsp <シード値> <探索開始地点数> <ファイル名>")
-      println("を指定してください")
+      println("Please designate these 3, as arguments.")
+      println(">>> scala Tsp <Seed> <The number of start point> <Filename>")
       sys.exit(-1)
     } else {
+
+      val state = Actor.State.Suspended
 
       //問題の初期設定
       val seed = args(0).toInt
       val genNum = args(1).toInt //探索開始地点数．これも実行時に指定できるようにする．
       val filename = args(2)
       Random.setSeed(seed)
-      //ここはdatファイルから読み込めるようにする
-      //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (2,1), (2,2), (1,2), (0,2), (0,1) )
-      //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (0,2), (2,2), (1,2), (2,1), (0,1) )
-      //val citycordi:Array[(Int, Int)] = (for (i <- 0 until 100) yield (nextInt(100), nextInt(100))).toArray
       //datファイルから読み込む
       val citycordi:IndexedSeq[(Double, Double)] = tsuhakoMethod(filename)
 
@@ -100,13 +96,13 @@ object TspCol {
       val retRou2 = returnBestRoute2(getDis)_
 
       //ルートをgenNumの数だけシャッフル
-      var routes = for(i <- 0 until genNum-1) yield shuffleRoute(defaultRoute)
-      routes :+= defaultRoute
+      val routes = for(i <- 0 until genNum) yield shuffleRoute(defaultRoute)
 
       val findBest = actor {
         loop {
           react {
             case candidates: ParSeq[List[Int]] => {
+              //println("===findBest===")
               reply(retRou(candidates)) //List[Int]
             }
           }
@@ -114,49 +110,93 @@ object TspCol {
       }
 
       val samplepoint = actor {
-        var tempList = List[Int]()
-
-        def func(route: List[Int]): Unit = {
-          tempList = route
-          val candidates = twoOpt(route)
-          val div = 4
-          val hop = candidates.length/div
-          val slicedList = for(i <- 0 until div) yield candidates.slice(hop*i, hop*i+hop)
-          val best = for(i <- 0 until div) yield (findBest !? slicedList(i).par).asInstanceOf[List[Int]]
-          
-          //val best = (findBest !? candidates.par).asInstanceOf[List[Int]]
-          //if(getDis(tempList) >= getDis(best)) {
-          //  reply(best)
-          //} else {
-          //  func(best)
-          //}
-
-          ////println("the best one is " + best) //2-Optした後４分割する．分割したそれぞれのグループ内でのベストな解を表示
-          for(i <- 0 until div) {
-            if(getDis(tempList) >= getDis(best(i))) {
-              reply(best(i))
-            } else {
-              func(best(i))
-            }
-          }
-        }
-
-        loop {
+        var running = true
+        loopWhile(running) {
           react {
             case route: List[Int] => {
-              func(route)
+              val candidates = twoOpt(route)
+
+              //println("===samplepoint===")
+              //println("the selected route is " + route)
+              //println("its distance is " + getDis(route))
+
+              //val div = 4
+              //val hop = candidates.length/div
+              //val slicedList = for(i <- 0 until div) yield candidates.slice(hop*i, hop*i+hop)
+              //val best = for(i <- 0 until div) yield (findBest !? slicedList(i).par)//.asInstanceOf[List[Int]]
+
+
+              val best = (findBest !? candidates.par).asInstanceOf[List[Int]]
+              //println("===return(findBest)===")
+              //reply(best)
+
+              if(getDis(route) <= getDis(best)) {
+                //println("===reply===")
+                running = false
+                println("The solution is " + route)
+                println("The distance is " + getDis(route))
+                sys.exit(0)
+                //sender ! route
+              } else {
+                //println("===再帰===")
+                (scala.actors.Actor.self) ! best.toList
+              }
+
+              //for(i <- 0 until div) {
+              //  if(getDis(route) >= getDis(best(i))) {
+              //    reply(best(i))
+              //  } else {
+              //    (scala.actors.Actor.self) ! best(i)
+              //  }
+              //}
             }
           }
         }
       }
 
-      val better = for (i <- 0 until routes.length) yield (samplepoint !? routes(i)).asInstanceOf[List[Int]]
-      while(samplepoint.getState.toString == "Runnable") {println("waiting")}
-      val answer = retRou2(better.toList)
-      println("解は " + answer)
-      println("その距離は " + getDis(answer))
-      println(samplepoint.getState)
-      sys.exit(0)
+      //val b = actor {
+      //  react {
+      //    case routes: List[List[Int]] => {
+      //      val better = for (i <- 0 until routes.length) yield (samplepoint !? routes(i)).asInstanceOf[List[Int]]
+      //      reply(retRou2(better.toList))
+      //    }
+      //  }
+      //}
+
+      //val a = actor {
+
+      //  def func(betterRoute: List[Int]): List[Int] = {
+      //    val newBetterRoute = (samplepoint !? betterRoute).asInstanceOf[List[Int]]
+      //    if(getDis(betterRoute) <= getDis(newBetterRoute))
+      //      betterRoute
+      //    else //when (getDis(betterRoute) > getDis(newBetterRoute))
+      //      func(newBetterRoute)
+      //  }
+
+      //  loop {
+      //    react {
+      //      case list: List[Int] => {
+      //        reply(func(list))
+      //      }
+      //    }
+      //  }
+      //}
+
+      //val better = for (i <- 0 until routes.length) yield (a !? routes(i)).asInstanceOf[List[Int]]
+
+      //val better = for (i <- 0 until routes.length) yield func(routes(i))
+
+      //val better = for (i <- 0 until routes.length) yield (samplepoint !? routes(i)).asInstanceOf[List[Int]]
+      for (i <- 0 until routes.length) (samplepoint ! routes(i))//.asInstanceOf[List[Int]]
+      //println(better)
+      //
+      //
+      //while(samplepoint.getState != state) {println("waiting")}
+      //println(samplepoint.getState)
+      //val answer = retRou2(better.toList)
+      //println("The solution is " + answer)
+      //println("The distance is " + getDis(answer))
+      //sys.exit(0)
     }
   }
 }
