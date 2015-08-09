@@ -96,16 +96,18 @@ object TspAkka {
       val routes = for(i <- 0 until genNum) yield shuffleRoute(defaultRoute)
 
 
+
+
   val system = ActorSystem("system")
 
-  val act = system.actorOf(Props(classOf[SamplePoint], getDis, retRou))
+  val act = system.actorOf(Props(classOf[SamplePoint], getDis, retRou, genNum))
 
-  implicit val timeout = Timeout(1 seconds)
+  implicit val timeout = Timeout(100 seconds)
 
   for (i <- 0 until routes.length) (act ! routes(i))
-  //val future = for (i <- 0 until routes.length) yield (act ? routes(i))
+  //val future = for (i <- 0 until genNum) yield (act ? routes(i))
   //println(future)
-  //val result = Await.result(future, timeout.duration).toIndexedSeq
+  //val result = for (i <- 0 until genNum) yield Await.result(future(i), timeout.duration)
   //println(result)
 
 
@@ -119,7 +121,7 @@ object TspAkka {
   }
 }
 
-class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List[Int]) extends Actor {
+class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List[Int], genNum: Int) extends Actor {
 
   //2-optして近傍で最良の解を求めるメソッド
   def twoOpt(order: List[Int]): List[List[Int]] = {
@@ -128,10 +130,20 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
     order :: candidates.toList
   }
 
+      //比較対象を入れておくリスト
+      var results = ParSeq[List[Int]]()
+
+      //setterメソッド
+      def setter(list: List[Int]) = {
+        this.synchronized {
+          results :+= list
+        }
+      }
+
   def receive: Receive = {
     case route: List[Int] => {
       val act = context.actorOf(Props(classOf[FindBest], retRou))
-      implicit val timeout = Timeout(1 seconds)
+      implicit val timeout = Timeout(3 seconds)
 
       val candidates = twoOpt(route)
 
@@ -139,10 +151,15 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
       val best = Await.result(future, timeout.duration).asInstanceOf[List[Int]]
 
       if(getDis(route) <= getDis(best)) {
-        //println("===result===")
-        println("The solution is " + route)
-        println("The distance is " + getDis(route))
-        sys.exit(0)
+        setter(route)
+        if (results.length == genNum) {
+          println("candidates are " + results)
+          val answer = retRou(results)
+          println("the best one is " + answer)
+          println("The distance is " + getDis(answer))
+          sys.exit(0)
+          //sender ! results
+        }
       } else {
         //println("===a recursive call===")
         self ! best.toList
