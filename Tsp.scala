@@ -63,8 +63,8 @@ object Tsp {
       Random.setSeed(seed)
       //ここはdatファイルから読み込めるようにする
       //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (2,1), (2,2), (1,2), (0,2), (0,1) )
-      //val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (0,2), (2,2), (1,2), (2,1), (0,1) )
-      val citycordi:Array[(Int, Int)] = (for (i <- 0 until 100) yield (nextInt(100), nextInt(100))).toArray
+      val citycordi:Array[(Int, Int)] = Array( (0,0), (1,0), (2,0), (0,2), (2,2), (1,2), (2,1), (0,1) )
+      //val citycordi:Array[(Int, Int)] = (for (i <- 0 until 100) yield (nextInt(100), nextInt(100))).toArray
       //都市間の距離をあらかじめ求めておく
       val distanceTable = getOverallDistance(citycordi)
       //都市数
@@ -76,7 +76,7 @@ object Tsp {
       //ルートをgenNumの数だけシャッフル
       var routes = for(i <- 0 until genNum-1) yield shuffleRoute(defaultRoute)
       routes :+= defaultRoute
-      println(routes)
+      //println(routes)
 
       val findBest = actor {
         loop {
@@ -99,7 +99,7 @@ object Tsp {
           val slicedList = for(i <- 0 until div) yield 
           candidates.slice(hop*i, hop*i+hop)
           val best = for(i <- 0 until div) yield (findBest !? slicedList(i)).asInstanceOf[List[Int]]
-          println("the best one is " + best) //2-Optした後４分割する．分割したそれぞれのグループ内でのベストな解を表示
+          //println("the best one is " + best) //2-Optした後４分割する．分割したそれぞれのグループ内でのベストな解を表示
           for(i <- 0 until div) {
             if(getRouteDistance(tempList, distanceTable) >= getRouteDistance(best(i), distanceTable)) {
               reply(best(i))

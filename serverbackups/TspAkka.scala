@@ -49,21 +49,11 @@ object TspAkka {
   }
 
   //最良の経路を返す（並列化してるときに利用）
-  def returnBestRoute(funcObj: List[Int] => Double)(candidates: ParSeq[List[Int]])(len: Double): ParSeq[List[Int]] = {
+  def returnBestRoute(funcObj: List[Int] => Double)(candidates: ParSeq[List[Int]]): List[Int] = {
     val dis = candidates.map(x => funcObj(x))
-    val neighborhood = dis.filter( _ < len ).map(x => candidates(dis.indexOf(x)))
-    neighborhood.par
-    //val bestNeighborhood = candidates(dis.indexOf(dis.min))
-    //list.filter(_>4).map(x => l(list.indexOf(x)))
-    //bestNeighborhood
+    val bestNeighborhood = candidates(dis.indexOf(dis.min))
+    bestNeighborhood
   }
-
-  ////最良の経路を返す（並列化してるときに利用）
-  //def returnBestRoute(funcObj: List[Int] => Double)(candidates: ParSeq[List[Int]]): List[Int] = {
-  //  val dis = candidates.map(x => funcObj(x))
-  //  val bestNeighborhood = candidates(dis.indexOf(dis.min))
-  //  bestNeighborhood
-  //}
 
   def main(args: Array[String]): Unit = {
     if(args.length != 3) {
@@ -96,23 +86,7 @@ object TspAkka {
 
       val system = ActorSystem("system")
 
-<<<<<<< HEAD
       val act = system.actorOf(Props(classOf[SamplePoint], getDis, retRou, genNum))
-=======
-
-
-  val system = ActorSystem("system")
-
-  val act = system.actorOf(Props(classOf[SamplePoint], getDis, retRou, genNum))
-
-  implicit val timeout = Timeout(100 seconds)
-
-  for (i <- 0 until routes.length) (act ! routes(i))
-  //val future = for (i <- 0 until genNum) yield (act ? routes(i))
-  //println(future)
-  //val result = for (i <- 0 until genNum) yield Await.result(future(i), timeout.duration)
-  //println(result)
->>>>>>> 23a112218a1e537d57a5d44e5f5d2641e1bab6e6
 
       implicit val timeout = Timeout(1 seconds)
 
@@ -121,11 +95,7 @@ object TspAkka {
   }
 }
 
-<<<<<<< HEAD
-class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => Double => ParSeq[List[Int]], genNum: Int) extends Actor {
-=======
 class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List[Int], genNum: Int) extends Actor {
->>>>>>> 23a112218a1e537d57a5d44e5f5d2641e1bab6e6
 
   //2-optして近傍で最良の解を求めるメソッド
   def twoOpt(order: List[Int]): List[List[Int]] = {
@@ -134,7 +104,6 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
     order :: candidates.toList
   }
 
-<<<<<<< HEAD
   val start = System.currentTimeMillis()
   //比較対象を入れておくリスト
   var results = ParSeq[List[Int]]()
@@ -146,42 +115,17 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
     }
   }
 
-
-  val act = context.actorOf(Props(classOf[FindBest], retRou))
-  implicit val timeout = Timeout(1 seconds)
-
-  def receive: Receive = {
-    case route: List[Int] => {
-
-      val candidates = twoOpt(route)
-
-      val future = act ? (candidates.par, getDis(route))
-      val best = Await.result(future, timeout.duration).asInstanceOf[ParSeq[List[Int]]]
-
-      best.foreach{
-        x =>
-          println("The distance is " + getDis(x))
-          self ! x
-=======
-      //比較対象を入れておくリスト
-      var results = ParSeq[List[Int]]()
-
-      //setterメソッド
-      def setter(list: List[Int]) = {
-        this.synchronized {
-          results :+= list
-        }
-      }
-
   def receive: Receive = {
     case route: List[Int] => {
       val act = context.actorOf(Props(classOf[FindBest], retRou))
-      implicit val timeout = Timeout(3 seconds)
+      implicit val timeout = Timeout(1 seconds)
 
       val candidates = twoOpt(route)
 
       val future = act ? candidates.par
       val best = Await.result(future, timeout.duration).asInstanceOf[List[Int]]
+
+      //println("THREAD ID : " + Thread.currentThread.getName + " | DISTANCE : " + getDis(route))
 
       if(getDis(route) <= getDis(best)) {
         setter(route)
@@ -190,53 +134,24 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
           val answer = retRou(results)
           println("the best one is " + answer)
           println("The distance is " + getDis(answer))
+          val end = System.currentTimeMillis()
+          val interval = end - start
+          println(interval + " milli sec.")
           sys.exit(0)
-          //sender ! results
         }
       } else {
         //println("===a recursive call===")
         self ! best.toList
->>>>>>> 23a112218a1e537d57a5d44e5f5d2641e1bab6e6
       }
-
-      //println("THREAD ID : " + Thread.currentThread.getName + " | DISTANCE : " + getDis(route))
-
-      //if(getDis(route) <= getDis(best)) {
-      //  setter(route)
-      //  if (results.length == genNum) {
-      //    println("candidates are " + results)
-      //    val answer = retRou(results)
-      //    println("the best one is " + answer)
-      //    println("The distance is " + getDis(answer))
-      //    val end = System.currentTimeMillis()
-      //    val interval = end - start
-      //    println(interval + " milli sec.")
-      //    sys.exit(0)
-      //  }
-      //} else {
-      //  //println("===a recursive call===")
-      //  self ! best.toList
-      //}
     }
   }
 }
 
 
-class FindBest(retRou: ParSeq[List[Int]] => Double => ParSeq[List[Int]]) extends Actor {
+class FindBest(retRou: ParSeq[List[Int]] => List[Int]) extends Actor {
   def receive: Receive = {
-    //case candidates: ParSeq[List[Int]] => {
-    //  sender ! retRou(candidates) //List[Int]
-
-    case candidates: (scala.collection.parallel.immutable.ParSeq[List[Int]], Double) => {
-      //case candidates: List[List[Int]] => {
-      //println("===findBest===")
-      val newCandidates = retRou(candidates._1)(candidates._2)
-      sender ! newCandidates
-      //newCandidates.foreach {
-      //  x =>
-      //    println("The distance is " + getDis(x))
-      //    (samplepoint ! x)
-      //}
+    case candidates: ParSeq[List[Int]] => {
+      sender ! retRou(candidates) //List[Int]
     }
   }
 }

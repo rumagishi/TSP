@@ -2,8 +2,9 @@ import scala.io.Source
 import math._
 import scala.util.Random
 import scala.util.Random._
-import scala.actors.Actor
-import scala.actors.Actor._
+import akka.actor._
+//import scala.actors.Actor
+//import scala.actors.Actor._
 import scala.collection.parallel.immutable._
 
 object TspPar {

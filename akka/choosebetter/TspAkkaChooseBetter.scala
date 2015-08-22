@@ -11,7 +11,7 @@ import scala.concurrent.Await
 import akka.util.Timeout
 import scala.language.postfixOps
 
-object TspAkka {
+object TspAkkaChooseBetter {
 
   //datファイル読み込み
   def tsuhakoMethod(file: String): IndexedSeq[(Double, Double)] = {
@@ -96,23 +96,7 @@ object TspAkka {
 
       val system = ActorSystem("system")
 
-<<<<<<< HEAD
       val act = system.actorOf(Props(classOf[SamplePoint], getDis, retRou, genNum))
-=======
-
-
-  val system = ActorSystem("system")
-
-  val act = system.actorOf(Props(classOf[SamplePoint], getDis, retRou, genNum))
-
-  implicit val timeout = Timeout(100 seconds)
-
-  for (i <- 0 until routes.length) (act ! routes(i))
-  //val future = for (i <- 0 until genNum) yield (act ? routes(i))
-  //println(future)
-  //val result = for (i <- 0 until genNum) yield Await.result(future(i), timeout.duration)
-  //println(result)
->>>>>>> 23a112218a1e537d57a5d44e5f5d2641e1bab6e6
 
       implicit val timeout = Timeout(1 seconds)
 
@@ -121,11 +105,7 @@ object TspAkka {
   }
 }
 
-<<<<<<< HEAD
 class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => Double => ParSeq[List[Int]], genNum: Int) extends Actor {
-=======
-class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List[Int], genNum: Int) extends Actor {
->>>>>>> 23a112218a1e537d57a5d44e5f5d2641e1bab6e6
 
   //2-optして近傍で最良の解を求めるメソッド
   def twoOpt(order: List[Int]): List[List[Int]] = {
@@ -134,7 +114,6 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
     order :: candidates.toList
   }
 
-<<<<<<< HEAD
   val start = System.currentTimeMillis()
   //比較対象を入れておくリスト
   var results = ParSeq[List[Int]]()
@@ -162,41 +141,6 @@ class SamplePoint(getDis: List[Int] => Double, retRou: ParSeq[List[Int]] => List
         x =>
           println("The distance is " + getDis(x))
           self ! x
-=======
-      //比較対象を入れておくリスト
-      var results = ParSeq[List[Int]]()
-
-      //setterメソッド
-      def setter(list: List[Int]) = {
-        this.synchronized {
-          results :+= list
-        }
-      }
-
-  def receive: Receive = {
-    case route: List[Int] => {
-      val act = context.actorOf(Props(classOf[FindBest], retRou))
-      implicit val timeout = Timeout(3 seconds)
-
-      val candidates = twoOpt(route)
-
-      val future = act ? candidates.par
-      val best = Await.result(future, timeout.duration).asInstanceOf[List[Int]]
-
-      if(getDis(route) <= getDis(best)) {
-        setter(route)
-        if (results.length == genNum) {
-          println("candidates are " + results)
-          val answer = retRou(results)
-          println("the best one is " + answer)
-          println("The distance is " + getDis(answer))
-          sys.exit(0)
-          //sender ! results
-        }
-      } else {
-        //println("===a recursive call===")
-        self ! best.toList
->>>>>>> 23a112218a1e537d57a5d44e5f5d2641e1bab6e6
       }
 
       //println("THREAD ID : " + Thread.currentThread.getName + " | DISTANCE : " + getDis(route))

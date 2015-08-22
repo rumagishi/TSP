@@ -53,17 +53,31 @@ object TspCol {
   }
 
   //最良の経路を返す（並列化してるときに利用）
-  def returnBestRoute(funcObj: List[Int] => Double)(candidates: ParSeq[List[Int]]): List[Int] = {
+  def returnBestRoute(funcObj: List[Int] => Double)(candidates: ParSeq[List[Int]])(len: Double): ParSeq[List[Int]] = {
     val dis = candidates.map(x => funcObj(x))
+    val neighborhood = dis.filter( _ < len ).map(x => candidates(dis.indexOf(x)))
+    neighborhood.par
+    //val bestNeighborhood = candidates(dis.indexOf(dis.min))
+    //list.filter(_>4).map(x => l(list.indexOf(x)))
+    //bestNeighborhood
+    
+  }
+
+  //最良の経路を返す（並列化してるときに利用）
+  def returnBestRoute2(funcObj: List[Int] => Double)(candidates: ParSeq[List[Int]]): List[Int] = {
+    val dis = candidates.map(x => funcObj(x))
+    //val neighborhood = dis.filter( _ > len ).map(x => candidates(dis.indexOf(x)))
+    //neighborhood.par
     val bestNeighborhood = candidates(dis.indexOf(dis.min))
     bestNeighborhood
+    
   }
 
   //2-optして近傍で最良の解を求めるメソッド
   def twoOpt(order: List[Int]): List[List[Int]] = {
     val len = order.length
     var candidates = for(i <- 0 until len-1; j <- i+1 until len) yield order.updated(i,order(j)).updated(j,order(i)).toList
-    order :: candidates.toList
+    candidates.toList
   }
 
   def main(args: Array[String]): Unit = {
@@ -73,7 +87,7 @@ object TspCol {
       sys.exit(-1)
     } else {
 
-      val state = Actor.State.Terminated
+      //val state = Actor.State.Suspended
 
       //問題の初期設定
       val seed = args(0).toInt
@@ -93,6 +107,7 @@ object TspCol {
       //関数オブジェクトの生成
       val getDis = getRouteDistance(distanceTable)_
       val retRou = returnBestRoute(getDis)_
+      val retRou2 = returnBestRoute2(getDis)_
 
       //ルートをgenNumの数だけシャッフル
       val routes = for(i <- 0 until genNum) yield shuffleRoute(defaultRoute)
@@ -108,53 +123,85 @@ object TspCol {
         }
       }
 
-      val findBest = actor {
+      val findBest: scala.actors.Actor = actor {
         loop {
           react {
-            case candidates: ParSeq[List[Int]] => {
-            //case candidates: List[List[Int]] => {
+            case candidates: (scala.collection.parallel.immutable.ParSeq[List[Int]], List[Int]) => {
+              //case candidates: List[List[Int]] => {
               //println("===findBest===")
-              reply(retRou(candidates)) //List[Int]
+              val newCandidates = retRou(candidates._1)(getDis(candidates._2))
+              newCandidates.foreach {
+                x =>
+                println("The distance is " + getDis(x))
+                (samplepoint ! x)
+              }
+              //reply(hoge) //ParSeq[List[Int]]
+              //for (i <- 0 until newCandidates.length) {
+              //  println("the best one is " + newCandidates(i))
+              //  println("The distance is " + getDis(newCandidates(i)))
+              //  (samplepoint ! newCandidates(i))
+              //}
             }
           }
         }
       }
 
-      val samplepoint = actor {
-        var running = true
-        loopWhile(running) {
-          react {
-            case route: List[Int] => {
-              val candidates = twoOpt(route)
+      val samplepoint: scala.actors.Actor = actor {
+          var running = true
+          loopWhile(running) {
+            react {
+              case route: List[Int] => {
+                val candidates = twoOpt(route)
 
-              //println("===samplepoint===")
-              //println("the selected route is " + route)
-              //println("its distance is " + getDis(route))
+                //println("===samplepoint===")
+                //println("the selected route is " + route)
+                //println("THREAD ID : " + Thread.currentThread.getName + " | DISTANCE : " + getDis(route))
 
-              val best = (findBest !? candidates.par).asInstanceOf[List[Int]]
-              //println("===return(findBest)===")
+                val tuple = (candidates.par, route)
+                (findBest ! tuple)
+                //val newCandidates = retRou(candidates.par)(getDis(route))
+                //reply(hoge) //ParSeq[List[Int]]
+                //newCandidates.foreach{
+                //  x => 
+                //  //println("the best one is " + x);
+                //  println("The distance is " + getDis(x))
 
-              if(getDis(route) <= getDis(best)) {
-                setter(route)
-                if (results.length == genNum) {
-                  running = false
-                } 
-              } else {
-                //println("===a recursive call===")
-                (scala.actors.Actor.self) ! best.toList
+                //  //(scala.actors.Actor.self) ! x
+                //}
+                //for (i <- 0 until newCandidates.length) {
+                //  println("the best one is " + newCandidates(i))
+                //  println("The distance is " + getDis(newCandidates(i)))
+                //  (scala.actors.Actor.self) !! newCandidates(i)
+                //}
+
+                //val best = (findBest ! tuple).asInstanceOf[ParSeq[List[Int]]] //ParSeq[List[Int]]
+                //(findBest ! tuple)//.asInstanceOf[ParSeq[List[Int]]] //ParSeq[List[Int]]
+                //println("===return(findBest)===")
+
+                //for (i <- 0 until best.length) {
+                //if(getDis(route) <= getDis(best(i))) {
+                //setter(route)
+                //if (results.length == genNum) {
+                //  running = false
+                //  println("candidates are " + results)
+                //    val answer = retRou2(results)
+                //    println("the best one is " + best(i))
+                //    println("The distance is " + getDis(best(i)))
+                //    sys.exit(0)
+                //  } 
+                //} else {
+                //  println("===a recursive call===")
+                //  (scala.actors.Actor.self) ! best(i)//.toList
+                //}
+
+                //}
               }
             }
           }
-        }
       }
 
       for (i <- 0 until genNum) (samplepoint ! routes(i))
-      while(state != samplepoint.getState) { /*println("waiting")*/ }
-      println("candidates are " + results)
-      val answer = retRou(results)
-      println("the best one is " + answer)
-      println("The distance is " + getDis(answer))
-      sys.exit(0)
+      //while(state != samplepoint.getState) { /*println("waiting")*/ }
     }
   }
 }
